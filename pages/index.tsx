@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 
 import { MainGrid } from '../src/components/MainGrid';
 import { Box } from '../src/components/Box';
@@ -36,6 +36,28 @@ function ProfileSidebar({ githubUser }: ProfileSidebarProps) {
   );
 }
 
+function ProfileRelationsBox(propriedades: any) {
+  return (
+    <ProfileRelationsBoxWrapper>
+      <h2 className='smallTitle'>
+        {propriedades.title} ({propriedades.items.length})
+      </h2>
+      <ul>
+        {/* {seguidores.map((itemAtual) => {
+          return (
+            <li key={itemAtual}>
+              <a href={`https://github.com/${itemAtual}.png`}>
+                <img src={itemAtual.image} />
+                <span>{itemAtual.title}</span>
+              </a>
+            </li>
+          )
+        })} */}
+      </ul>
+    </ProfileRelationsBoxWrapper>
+  );
+}
+
 type Comunidade = {
   id: string;
   title: string | FormDataEntryValue | null;
@@ -54,7 +76,6 @@ export default function Home() {
   // const comunidades = comunidades[0];
   // const alteradorDeComunidades/setComunidades = comunidades[1];
 
-  console.log('Nosso teste');
   // const comunidades = ['Alurakut'];
   const pessoasFavoritas = [
     'juunegreiros',
@@ -64,6 +85,24 @@ export default function Home() {
     'marcobrunodev',
     'felipefialho',
   ];
+
+  const [seguidores, setSeguidores] = useState<any>([]);
+
+  // 0 - Pegar o array de dados do github
+  useEffect(() => {
+    fetch('https://api.github.com/users/peas/followers')
+      .then(function (respostaDoServidor) {
+        return respostaDoServidor.json();
+      })
+      .then(function (respostaCompleta) {
+        setSeguidores(respostaCompleta);
+      });
+  }, []);
+
+  console.log('seguidores antes do return', seguidores);
+
+  // 1 - Criar um box que vai ter um map, baseado nos items do array
+  // que pegamos do GitHub
 
   return (
     <>
@@ -125,6 +164,7 @@ export default function Home() {
           className='profileRelationsArea'
           style={{ gridArea: 'profileRelationsArea' }}
         >
+          <ProfileRelationsBox title='Seguidores' items={seguidores} />
           <ProfileRelationsBoxWrapper>
             <h2 className='smallTitle'>Comunidades ({comunidades.length})</h2>
             <ul>
