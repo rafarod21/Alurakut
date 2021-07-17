@@ -1,4 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react';
+import { GetServerSideProps } from 'next';
+import nookies from 'nookies';
+import jwt from 'jsonwebtoken';
 
 import { MainGrid } from '../src/components/MainGrid';
 import { Box } from '../src/components/Box';
@@ -36,11 +39,37 @@ function ProfileSidebar({ githubUser }: ProfileSidebarProps) {
   );
 }
 
-function ProfileRelationsBox(propriedades: any) {
+type Seguidores = {
+  login: string;
+  id: number;
+  node_id: string;
+  avatar_url: string;
+  gravatar_id: string;
+  url: string;
+  html_url: string;
+  followers_url: string;
+  following_url: string;
+  gists_url: string;
+  starred_url: string;
+  subscriptions_url: string;
+  organizations_url: string;
+  repos_url: string;
+  events_url: string;
+  received_events_url: string;
+  type: string;
+  site_admin: boolean;
+};
+
+type ProfileRelationsBoxProps = {
+  title: string;
+  seguidores: Seguidores[];
+};
+
+function ProfileRelationsBox({ title, seguidores }: ProfileRelationsBoxProps) {
   return (
     <ProfileRelationsBoxWrapper>
       <h2 className='smallTitle'>
-        {propriedades.title} ({propriedades.items.length})
+        {title} ({seguidores.length})
       </h2>
       <ul>
         {/* {seguidores.map((itemAtual) => {
@@ -59,27 +88,18 @@ function ProfileRelationsBox(propriedades: any) {
 }
 
 type Comunidade = {
-  // id: string;
   title: string | FormDataEntryValue | null;
   imageUrl: string | FormDataEntryValue | null;
   creatorSlug: string;
 };
 
-export default function Home() {
-  const usuarioAleatorio = 'rafarod21';
-  // const [comunidades, setComunidades] = useState<Comunidade[]>([
-  //   {
-  //     id: '12802378123789378912789789123896123',
-  //     title: 'Eu odeio acordar cedo',
-  //     imageUrl: 'https://alurakut.vercel.app/capa-comunidade-01.jpg',
-  //     creatorSlug: 'rafarod21'
-  //   },
-  // ]);
-  const [comunidades, setComunidades] = useState<Comunidade[]>([]);
-  // const comunidades = comunidades[0];
-  // const alteradorDeComunidades/setComunidades = comunidades[1];
+type HomeProps = {
+  githubUser: string;
+};
 
-  // const comunidades = ['Alurakut'];
+export default function Home({ githubUser }: HomeProps) {
+  const usuarioAleatorio = githubUser;
+  const [comunidades, setComunidades] = useState<Comunidade[]>([]);
   const pessoasFavoritas = [
     'juunegreiros',
     'omariosouto',
@@ -89,7 +109,7 @@ export default function Home() {
     'felipefialho',
   ];
 
-  const [seguidores, setSeguidores] = useState<any>([]);
+  const [seguidores, setSeguidores] = useState<Seguidores[]>([]);
 
   // 0 - Pegar o array de dados do github
   useEffect(() => {
@@ -209,7 +229,7 @@ export default function Home() {
           className='profileRelationsArea'
           style={{ gridArea: 'profileRelationsArea' }}
         >
-          <ProfileRelationsBox title='Seguidores' items={seguidores} />
+          <ProfileRelationsBox title='Seguidores' seguidores={seguidores} />
           <ProfileRelationsBoxWrapper>
             <h2 className='smallTitle'>Comunidades ({comunidades.length})</h2>
             <ul>
@@ -248,3 +268,58 @@ export default function Home() {
     </>
   );
 }
+
+type DecodeToken = {
+  githubUser: string;
+  roles: string[];
+  iat: number;
+  exp: number;
+};
+
+export const getServerSideProps: GetServerSideProps = async (ctx) => {
+  const cookies = nookies.get(ctx);
+  const token = cookies.USER_TOKEN;
+
+  // Parte original (errada)
+  // const { isAuthenticated } = await fetch(
+  //   'https://alurakut.vercel.app/api/auth',
+  //   {
+  //     headers: {
+  //       Authorization: token,
+  //     },
+  //   }
+  // ).then((resposta) => resposta.json()); // Versão oficial (está com erro)
+
+  // if (!isAuthenticated) {
+  //   return {
+  //     redirect: {
+  //       destination: '/login',
+  //       permanent: false,
+  //     },
+  //   };
+  // }
+
+  const { githubUser } = jwt.decode(token) as DecodeToken;
+
+  //********************************
+  // Parte feita para "arrumar" o erro da original
+  const existingUser = await fetch(`https://github.com/${githubUser}`).then(
+    async (response) => (response.status === 404 ? false : true)
+  );
+
+  if (!existingUser) {
+    return {
+      redirect: {
+        destination: '/login',
+        permanent: false,
+      },
+    };
+  }
+  //********************************
+
+  return {
+    props: {
+      githubUser,
+    }, // will be passed to the page component as props
+  };
+};
